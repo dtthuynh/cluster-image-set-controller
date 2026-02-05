@@ -1,0 +1,73 @@
+# All-in-one: create the branch if it doesn't exist, then build with that branch as the default.
+# The binary/image will use this branch as the default when no ConfigMap overrides it.
+#
+# Usage: Actions → "Build with branch default" → Run workflow → enter branch (e.g. backplane-2.12).
+
+name: Build with branch default
+
+on:
+  workflow_dispatch:
+    inputs:
+      default_sync_branch:
+        description: 'Branch to create (if missing) and use as default (e.g. backplane-2.12)'
+        required: true
+        default: 'backplane-2.12'
+      build_image:
+        description: 'Build Docker image (requires DOCKER/config or QUAY credentials)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write  # needed to push new branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create branch if it doesn't exist
+        run: |
+          BRANCH="${{ inputs.default_sync_branch }}"
+          DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
+          git fetch origin
+          git checkout "$DEFAULT_BRANCH"
+          if git show-ref --quiet "refs/remotes/origin/$BRANCH"; then
+            echo "Branch origin/$BRANCH already exists, checking it out."
+            git checkout "$BRANCH"
+          else
+            echo "Creating and pushing branch $BRANCH from $DEFAULT_BRANCH."
+            git checkout -b "$BRANCH"
+            git push -u origin "$BRANCH"
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build binary
+        env:
+          GIT_BRANCH: ${{ inputs.default_sync_branch }}
+        run: make build
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: clusterimageset-${{ inputs.default_sync_branch }}
+          path: bin/clusterimageset
+
+      - name: Build and push image
+        if: inputs.build_image
+        env:
+          GIT_BRANCH: ${{ inputs.default_sync_branch }}
+          IMG: quay.io/stolostron/cluster-imageset-controller:${{ inputs.default_sync_branch }}
+        run: |
+          make docker-build
+          echo "Image built (add login + docker push to push to a registry)"
