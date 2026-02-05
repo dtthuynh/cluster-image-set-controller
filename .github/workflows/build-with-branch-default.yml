@@ -32,9 +32,16 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create branch if it doesn't exist
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BRANCH="${{ inputs.default_sync_branch }}"
-          DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
+          # Get default branch: origin/HEAD is often not set in Actions checkout, so use API
+          DEFAULT_BRANCH=$(gh api "repos/${{ github.repository }}" --jq '.default_branch')
+          if [ -z "$DEFAULT_BRANCH" ]; then
+            DEFAULT_BRANCH=main
+          fi
+          echo "Default branch: $DEFAULT_BRANCH"
           git fetch origin
           git checkout "$DEFAULT_BRANCH"
           if git show-ref --quiet "refs/remotes/origin/$BRANCH"; then
