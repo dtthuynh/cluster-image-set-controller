@@ -66,21 +66,13 @@ test: fmt vet envtest ## Run tests.
 vendor:
 	go mod vendor
 
-# Default git branch is set at build time from current branch when available (e.g. backplane-2.12).
-# Override with: make build GIT_BRANCH=backplane-2.12 (or docker build --build-arg GIT_BRANCH=backplane-2.12).
-GIT_BRANCH ?= $(shell git branch --show-current 2>/dev/null)
-GO_LDFLAGS :=
-ifneq ($(GIT_BRANCH),)
-GO_LDFLAGS := -ldflags "-X github.com/stolostron/cluster-imageset-controller/pkg/controller.DefaultGitRepoBranch=$(GIT_BRANCH)"
-endif
-
 .PHONY: build
 build: vendor fmt vet ## Build manager binary.
-	GOFLAGS="" go build $(GO_LDFLAGS) -o bin/clusterimageset cmd/main.go
+	GOFLAGS="" go build -o bin/clusterimageset cmd/main.go
 
 .PHONY: build-konflux
 build-konflux:
-	GOFLAGS="" go build $(GO_LDFLAGS) -o bin/clusterimageset cmd/main.go
+	GOFLAGS="" go build -o bin/clusterimageset cmd/main.go
 
 .PHONY: run
 run: fmt vet ## Run a controller from your host.

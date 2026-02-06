@@ -44,12 +44,23 @@ const (
 	DefaultGitRepoUrl  = "https://github.com/stolostron/acm-hive-openshift-releases.git"
 	DefaultGitRepoPath = "clusterImageSets"
 	DefaultChannel     = "fast"
+
+	// Env var to override default sync branch; fallback used if unset.
+	defaultBranchEnv = "DEFAULT_GIT_REPO_BRANCH"
+	fallbackBranch   = "backplane-2.11"
 )
 
-// DefaultGitRepoBranch is the default branch to sync from. It can be set at build time
-// via -ldflags so that builds from a given branch (e.g. backplane-2.12) use that branch
-// as the default. Example: go build -ldflags "-X github.com/stolostron/cluster-imageset-controller/pkg/controller.DefaultGitRepoBranch=backplane-2.12" ...
-var DefaultGitRepoBranch = "backplane-2.11"
+func init() {
+	if b := os.Getenv(defaultBranchEnv); b != "" {
+		DefaultGitRepoBranch = b
+		return
+	}
+	DefaultGitRepoBranch = fallbackBranch
+}
+
+// DefaultGitRepoBranch is the default branch to sync from. Set at startup from
+// DEFAULT_GIT_REPO_BRANCH env var, or falls back to "backplane-2.11".
+var DefaultGitRepoBranch string
 
 func (r *ClusterImageSetController) getLastCommitID() (string, error) {
 	tempDir, err := ioutil.TempDir(os.TempDir(), "cluster-imageset-")

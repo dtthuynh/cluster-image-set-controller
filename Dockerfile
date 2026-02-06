@@ -3,10 +3,6 @@ WORKDIR /go/src/github.com/stolostron/cluster-imageset-controller
 COPY . .
 ENV GO_PACKAGE github.com/stolostron/cluster-imageset-controller
 
-# Optional: set to the git branch (e.g. backplane-2.12) so the default sync branch matches the build.
-ARG GIT_BRANCH=
-ENV GIT_BRANCH=${GIT_BRANCH}
-
 # Build
 RUN make build --warn-undefined-variables
 
